@@ -1,17 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import ConversationInput from './components/ConversationInput';
+import VoiceInterface from './components/VoiceInterface';
 import ResultsDisplay from './components/ResultsDisplay';
 
 export default function Home() {
   const [ideas, setIdeas] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showResults, setShowResults] = useState(false);
 
   const handleAnalyzeConversation = async (conversation: string) => {
     setIsLoading(true);
     setError('');
+    setShowResults(true);
 
     try {
       const response = await fetch('/api/analyze', {
@@ -36,26 +38,32 @@ export default function Home() {
     }
   };
 
+  const handleBackToRecording = () => {
+    setShowResults(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Conversation Analyzer</h1>
-          <p className="text-gray-600">
-            Input a conversation to identify business opportunities and viable solutions
-          </p>
-        </header>
+    <div className="min-h-screen bg-black text-white">
+      {!showResults ? (
+        <VoiceInterface onSubmit={handleAnalyzeConversation} />
+      ) : (
+        <div className="max-w-4xl mx-auto p-6">
+          {error && (
+            <div className="mb-8 p-4 bg-red-900 text-red-100 rounded-md">
+              {error}
+            </div>
+          )}
 
-        {error && (
-          <div className="mb-8 p-4 bg-red-100 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
+          <button
+            onClick={handleBackToRecording}
+            className="mb-6 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-md text-white"
+          >
+            ← Back to Recording
+          </button>
 
-        <ConversationInput onSubmit={handleAnalyzeConversation} />
-
-        <ResultsDisplay ideas={ideas} isLoading={isLoading} />
-      </div>
+          <ResultsDisplay ideas={ideas} isLoading={isLoading} />
+        </div>
+      )}
     </div>
   );
 }
