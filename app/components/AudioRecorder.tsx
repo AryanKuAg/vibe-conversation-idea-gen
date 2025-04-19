@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
-import { FaMicrophone, FaMicrophoneSlash, FaPlay, FaArrowRight } from 'react-icons/fa';
+import { FaPlay, FaArrowRight, FaPause, FaTimes } from 'react-icons/fa';
+
+// Import our simple visualizer component
+import SimpleVisualizer from './SimpleVisualizer';
 
 interface AudioRecorderProps {
   onNext: (audioBlob: Blob | null, audioUrl: string | null) => void;
@@ -15,34 +18,70 @@ export default function AudioRecorder({ onNext }: AudioRecorderProps) {
     stopRecording,
     resetRecording,
     isSupported,
-    audioLevel
+    mediaRecorder
   } = useAudioRecorder();
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(500);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Toggle recording state
-  const toggleRecording = async () => {
+  // Update container width on mount and resize
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+
+    // Initial update
+    updateWidth();
+
+    // Add resize listener
+    window.addEventListener('resize', updateWidth);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', updateWidth);
+    };
+  }, []);
+
+  // Cancel recording
+  const cancelRecording = async () => {
     if (isRecording) {
       await stopRecording();
-    } else {
       resetRecording();
-      await startRecording();
     }
+  };
+
+  // Start recording
+  const handleStartRecording = async () => {
+    resetRecording();
+    await startRecording();
   };
 
   // Play the recorded audio
   const playRecording = () => {
-    if (audioUrl) {
-      const audio = new Audio(audioUrl);
+    if (audioUrl && audioRef.current) {
+      audioRef.current.play();
       setIsPlaying(true);
-      
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
-      
-      audio.play();
     }
   };
+
+  // Handle audio playback end
+  useEffect(() => {
+    const handleEnded = () => setIsPlaying(false);
+
+    if (audioRef.current) {
+      audioRef.current.addEventListener('ended', handleEnded);
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleEnded);
+      }
+    };
+  }, [audioUrl]);
 
   // Proceed to next step
   const handleNext = () => {
@@ -54,77 +93,80 @@ export default function AudioRecorder({ onNext }: AudioRecorderProps) {
   return (
     <div className="flex flex-col items-center">
       <h2 className="text-2xl font-bold mb-6">Step 1: Record Your Conversation</h2>
-      
+
       {!isSupported && (
         <div className="mb-6 p-4 bg-red-900 text-red-100 rounded-lg w-full">
           Audio recording is not supported in this browser. Please use Chrome, Firefox, Safari, or Edge.
         </div>
       )}
-      
+
       {recordingError && (
         <div className="mb-6 p-4 bg-red-900 text-red-100 rounded-lg w-full">
           {recordingError}
         </div>
       )}
-      
-      {/* Recording Indicator */}
-      <div className="mb-8 flex flex-col items-center">
-        <div 
-          className={`w-32 h-32 rounded-full flex items-center justify-center mb-4 
-            ${isRecording ? 'bg-red-900 border-2 border-red-600' : 'bg-gray-800 border-2 border-gray-700'}`}
-        >
-          {isRecording ? (
-            <div className="flex items-end space-x-1">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white w-2 rounded-full voice-bar"
-                  style={{ 
-                    height: `${20 + Math.random() * 30}px`,
-                    animationDelay: `${i * 0.2}s`
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <FaMicrophone className="text-white text-4xl" />
-          )}
+
+      {/* Voice Visualizer */}
+      <div className="mb-8 flex flex-col items-center w-full">
+        <div ref={containerRef} className="w-full h-24 flex items-center justify-center mb-4 relative rounded-lg bg-gray-900 border border-gray-800 overflow-hidden">
+          <SimpleVisualizer
+            isRecording={isRecording}
+            mediaRecorder={mediaRecorder}
+            blob={audioBlob}
+            width={containerWidth}
+            height={96}
+          />
         </div>
-        
+
         <div className="text-center mb-4">
           {isRecording ? (
             <p className="text-red-400 animate-pulse">Recording in progress...</p>
           ) : audioUrl ? (
             <p className="text-green-400">Recording complete</p>
           ) : (
-            <p className="text-gray-400">Click the microphone to start recording</p>
+            <p className="text-gray-400">Click Start Recording to begin</p>
           )}
         </div>
       </div>
-      
+
+      {/* Hidden audio element for playback */}
+      {audioUrl && (
+        <audio ref={audioRef} src={audioUrl} className="hidden" />
+      )}
+
       {/* Controls */}
-      <div className="flex gap-4 mb-8">
-        <button
-          type="button"
-          onClick={toggleRecording}
-          disabled={!isSupported}
-          className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2 ${
-            isRecording
-              ? 'bg-red-600 hover:bg-red-700 text-white'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          } ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isRecording ? (
-            <>
-              <FaMicrophoneSlash /> Stop Recording
-            </>
-          ) : (
-            <>
-              <FaMicrophone /> Start Recording
-            </>
-          )}
-        </button>
-        
+      <div className="flex flex-wrap justify-center gap-4 mb-8">
+        {!isRecording ? (
+          <button
+            type="button"
+            onClick={handleStartRecording}
+            disabled={!isSupported}
+            className={`px-6 py-3 rounded-lg font-medium flex items-center gap-2
+              bg-blue-600 hover:bg-blue-700 text-white
+              ${!isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Start Recording
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={stopRecording}
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              <FaPause className="mr-2" /> Pause
+            </button>
+
+            <button
+              type="button"
+              onClick={cancelRecording}
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              <FaTimes className="mr-2" /> Cancel
+            </button>
+          </>
+        )}
+
         {audioUrl && !isRecording && (
           <button
             type="button"
@@ -132,11 +174,11 @@ export default function AudioRecorder({ onNext }: AudioRecorderProps) {
             disabled={isPlaying}
             className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-50"
           >
-            <FaPlay /> Play
+            <FaPlay className="mr-2" /> Play
           </button>
         )}
       </div>
-      
+
       {/* Next Button */}
       {audioBlob && !isRecording && (
         <button

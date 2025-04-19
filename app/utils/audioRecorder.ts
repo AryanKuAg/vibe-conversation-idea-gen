@@ -1,6 +1,6 @@
 /**
  * Audio Recorder Utility
- * 
+ *
  * This utility provides functions for recording audio using the browser's
  * MediaRecorder API and Web Audio API.
  */
@@ -25,6 +25,11 @@ export class AudioRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private stream: MediaStream | null = null;
+
+  // Get the MediaRecorder instance
+  getMediaRecorder(): MediaRecorder | null {
+    return this.mediaRecorder;
+  }
 
   // Initialize the recorder
   async initialize(): Promise<void> {
@@ -67,7 +72,7 @@ export class AudioRecorder {
         // Create a single blob from all the chunks
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         resolve(audioBlob);
-        
+
         // Clean up event listener
         if (this.mediaRecorder) {
           this.mediaRecorder.removeEventListener('stop', handleStop);
