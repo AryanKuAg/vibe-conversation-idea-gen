@@ -74,6 +74,23 @@ body {
   }
 }
 
+/* Animation for backup notification */
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-fadeOut {
+  animation: fadeOut 3s forwards;
+}
+
 /* Ensure full height on mobile */
 html, body {
   height: 100%;

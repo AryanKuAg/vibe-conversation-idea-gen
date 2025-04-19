@@ -5,6 +5,8 @@ import Stepper from './components/Stepper';
 import AudioRecorder from './components/AudioRecorder';
 import TextEditor from './components/TextEditor';
 import ResultsDisplay from './components/ResultsDisplay';
+import ClientOnly from './components/ClientOnly';
+import AudioTest from './components/AudioTest';
 
 export default function Home() {
   // Step management
@@ -88,7 +90,12 @@ export default function Home() {
         {/* Step Content */}
         <div className="mt-8">
           {currentStep === 0 && (
-            <AudioRecorder onNext={handleAudioRecorded} />
+            <ClientOnly>
+              <div className="space-y-8">
+                {/* <AudioTest /> */}
+                <AudioRecorder onNext={handleAudioRecorded} />
+              </div>
+            </ClientOnly>
           )}
 
           {currentStep === 1 && (
